@@ -1,0 +1,9 @@
+# yacc/bison generated files
+*.tab.c
+*.tab.h
+
+# Object files
+*.o
+
+# Executables
+hoc[0-9]*/hoc[0-9]*
