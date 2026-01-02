@@ -14,6 +14,7 @@ Inst *pc; /* program counter during execution */
 
 void initcode(void) /* initialize for code generation */
 {
+  /* 配列の先頭のアドレスをポインタに代入 */
   stackp = stack;
   progp = prog;
 }
@@ -23,7 +24,7 @@ void push(Datum d) /* push d onto stack */
   if(stackp >= &stack[NSTACK]){
     execerror("stack overflow", (char *) 0);
   }
-  *stackp++ = d;
+  *stackp++ = d; /* スタックに値を追加して、ポインタを進める */
 }
 
 Datum pop(void) /* pop and return top elem from stack */
@@ -31,7 +32,7 @@ Datum pop(void) /* pop and return top elem from stack */
   if (stackp <= stack){
     execerror("stack underflow", (char *) 0);
   }
-  return *--stackp;
+  return *--stackp; /* ポインタを戻して、スタックから値を取り出す */
 }
 
 /* popは戻り値がDatumのためcode2の引数にできない
@@ -43,17 +44,22 @@ void popstack(void) /* pop and discard top elem */
 
 Inst *code(Inst f) /* install one instruction or operand */
 {
-  Inst *oprogp = progp;
+  Inst *oprogp = progp; /* 現在のポインタを保存 */
   if(progp >= &prog[NPROG]){
     execerror("program too big", (char *) 0);
   }
-  *progp++ = f;
-  return oprogp;
+  *progp++ = f; /* 命令を書き込んでポインタを進める */
+  return oprogp; /* 命令を書き込んだ位置を返す */
 }
 
 void execute(Inst *p) /* run the machine */
 {
-  for(pc = p; *pc != STOP; ){
+  for(pc = p; *pc != STOP;){
+      /* 
+       * Inst f = *pc;
+       * pc++;
+       * f();
+       */
       (*(*pc++))();
   }
 }

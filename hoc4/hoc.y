@@ -132,8 +132,9 @@ void yyerror(const char *s)
 void warning(const char *s, const char *t)
 {
   fprintf(stderr, "%s: %s", progname, s);
-  if(t)
+  if(t){
     fprintf(stderr, "%s", t);
+  }
   fprintf(stderr, " near line %d\n", lineno);
 }
 
