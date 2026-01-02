@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
   for (initcode(); yyparse(); initcode()) {
     execute(prog);
   }
+  cleanup();
   return 0;
 }
 

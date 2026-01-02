@@ -20,7 +20,7 @@ extern Datum pop();
 typedef void (*Inst)(); /* machine instruction (voidを返す関数へのポインタ) */
 #define STOP (Inst) 0 /* 0をInst型にキャスト NULLポインタとして利用 */
 
-extern Inst prog[];
+extern Inst *prog;
 extern Inst *code(Inst f); /* 関数ポインタを引き数に取り、関数ポインタへのポインタを返す */
 extern void eval(void), add(void), sub(void), mul(void), divide(void), negate(void), power(void);
 extern void assign(void), bltin(void), varpush(void), constpush(void), print(void), popstack(void);
@@ -30,4 +30,6 @@ extern void execerror(const char *s, const char *t);
 extern void push(Datum d);
 extern void initcode(void);
 extern void execute(Inst *p);
+
+extern void cleanup(void);
 
