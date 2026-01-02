@@ -1,5 +1,4 @@
 %{
-#include <math.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <signal.h>

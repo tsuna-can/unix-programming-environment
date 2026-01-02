@@ -8,7 +8,7 @@ static Datum *stack = NULL; /* malloc・reallocで確保したスタック領域
 static Datum *stackp; /* next free spot on stack */
 static size_t stack_size = 0; /* malloc・reallocで確保した容量を記録 */
 
-Inst *prog = NULL;  /* malloc・reallocで確保したスタック領域全体の先頭アドレスを指す */
+Inst *prog = NULL;  /* malloc・reallocで確保した命令領域全体の先頭アドレスを指す */
 Inst *progp; /* next free spot for code generation */
 static size_t prog_size = 0; /* malloc・reallocで確保した容量を記録 */
 
@@ -26,21 +26,25 @@ void initcode(void) /* initialize for code generation */
     prog_size = 1;
     prog = (Inst *)malloc(prog_size * sizeof(Inst));
   }
-  progp = prog; /* stackが空なので先頭のアドレスを代入 */
+  progp = prog; /* progが空なので先頭のアドレスを代入 */
+}
+
+void reallocate_stack(void)
+{
+  size_t offset = stackp - stack; /* 既にスタックに積まれている要素数 */
+  stack_size *= 2; /* stackのサイズを2倍にする */
+  Datum *new_stack = (Datum *)realloc(stack, stack_size * sizeof(Datum));
+  if (new_stack == NULL) {
+    execerror("stack overflow", (char *) 0);
+  }
+  stack = new_stack; /* realloc後にアドレスが変わる可能性があるのでコピー */
+  stackp = stack + offset; /* 次に使用できるアドレスを記録 */
 }
 
 void push(Datum d) /* push d onto stack */
 {
   if(stackp >= stack + stack_size){
-    size_t offset = stackp - stack; /* 既にスタックに積まれている要素数 */
-    // stack_size *= 2;
-    stack_size++;
-    Datum *new_stack = (Datum *)realloc(stack, stack_size * sizeof(Datum));
-    if (new_stack == NULL) {
-      execerror("stack overflow", (char *) 0);
-    }
-    stack = new_stack; /* realloc後にアドレスが変わる可能性があるのでコピー */
-    stackp = stack + offset;
+    reallocate_stack();
   }
   *stackp++ = d; /* スタックに値を追加して、ポインタを進める */
 }
@@ -60,17 +64,21 @@ void popstack(void) /* pop and discard top elem */
   pop();
 }
 
+void reallocate_prog(void){
+  size_t offset = progp - prog;
+  prog_size *= 2;
+  Inst *new_prog = (Inst *)realloc(prog, prog_size * sizeof(Inst));
+  if (new_prog == NULL) {
+    execerror("program too big", (char *) 0);
+  }
+  prog = new_prog;
+  progp = prog + offset;
+}
+
 Inst *code(Inst f) /* install one instruction or operand */
 {
   if(progp >= prog + prog_size) {
-    size_t offset = progp - prog;
-    prog_size *= 2;
-    Inst *new_prog = (Inst *)realloc(prog, prog_size * sizeof(Inst));
-    if (new_prog == NULL) {
-      execerror("program too big", (char *) 0);
-    }
-    prog = new_prog;
-    progp = prog + offset;
+    reallocate_prog();
   }
   Inst *oprogp = progp; /* 命令を書き込む前のポインタを記録 */
   *progp++ = f; /* 命令を書き込んでポインタを進める */

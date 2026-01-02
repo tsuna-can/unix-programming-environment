@@ -10,7 +10,7 @@ hoc.o code.o init.o symbol.o: hoc.h
 code.o init.o symbol.o: x.tab.h
 
 x.tab.h: y.tab.h 
-	@cmp -s x.tab.h y.tab.h || cp y.tab.h x.tab.kanoh
+	@cmp -s x.tab.h y.tab.h || cp y.tab.h x.tab.h
 
 pr: hoc.y hoc.h code.c init.t math.c symbol.c
 	@pr $?
