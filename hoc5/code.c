@@ -14,6 +14,106 @@ Inst *progp; /* next free spot for code generation */
 
 Inst *pc;
 
+/* 命令オペランドタイプを示す定数 マシンの表示に使用する */
+#define OP_NONE 0 /* オペランドなし add, mul など */
+#define OP_SYMBOL 1 /* シンボル（変数・定数）を1つもつ */
+#define OP_BLTIN 2 /* 組み込み関数ポインタをもつ */
+#define OP_ADDRS 3 /* 複数のアドレスを利用するもの if, while など */
+
+/* マシンのデバック表示をするか */
+static int trace_enabled = 1;
+
+static struct {
+  Inst func;
+  const char *name;
+  int op_type;
+} inst_table[] = {
+  {constpush, "constpush", OP_SYMBOL},
+  {varpush, "varpush", OP_SYMBOL},
+  {add, "add", OP_NONE},
+  {sub, "sub", OP_NONE},
+  {mul, "mul", OP_NONE},
+  {divide, "divide", OP_NONE},
+  {negate, "negate", OP_NONE},
+  {power, "power", OP_NONE},
+  {eval, "eval", OP_NONE},
+  {assign, "assign", OP_NONE},
+  {print, "print", OP_NONE},
+  {prexpr, "prexpr", OP_NONE},
+  {popstack, "popstack", OP_NONE},
+  {bltin, "bltin", OP_BLTIN},
+  {gt, "gt", OP_NONE},
+  {lt, "lt", OP_NONE},
+  {eq, "eq", OP_NONE},
+  {ge, "ge", OP_NONE},
+  {le, "le", OP_NONE},
+  {ne, "ne", OP_NONE},
+  {and, "and", OP_NONE},
+  {or, "or", OP_NONE},
+  {not, "not", OP_NONE},
+  {whilecode, "whilecode", OP_ADDRS},
+  {ifcode, "ifcode", OP_ADDRS},
+  {STOP, "STOP", OP_NONE},
+  {NULL, NULL, 0}  /* Sentinel */
+};
+
+/* 命令名検索 */
+static const char* lookup_inst_name(Inst func, int *op_type) {
+  int i;
+  for (i = 0; inst_table[i].func != NULL; i++) { /* センチネルまでループ */
+    if (inst_table[i].func == func) {
+      *op_type = inst_table[i].op_type;
+      return inst_table[i].name;
+    }
+  }
+  *op_type = OP_NONE;
+  return "UNKNOWN";
+}
+
+/* マシンの情報を表示 */
+static void trace_instructon(Inst *pc_current) {
+  int op_type;
+  const char *name = lookup_inst_name(*pc_current, &op_type);
+  long offset = pc_current - prog;
+  int i;
+
+  fprintf(stderr, "[%04ld] %-12s", offset, name); /* 0埋めして4桁で表示、幅12文字 */
+
+  /* op_typeに応じて出力 */
+  switch(op_type){
+    case OP_SYMBOL: {
+      Symbol *sym = (Symbol *)(*(pc_current + 1));
+      fprintf(stderr, " sym='%s' val=%.8g", sym->name, sym->u.val);
+      break;
+    }
+    case OP_BLTIN: {
+      void *func = (void *)(*(pc_current + 1));
+      fprintf(stderr, "func=%p", func);
+      break;
+    }
+    case OP_ADDRS: {
+      Inst **addr1 = (Inst **)(pc_current + 1);
+      Inst **addr2 = (Inst **)(pc_current + 2);
+      Inst **addr3 = (Inst **)(pc_current + 3);
+      fprintf(stderr, " [%ld,%ld,%ld]", 
+              *addr1 ? *addr1 - prog : -1, /* アドレスが有効ならオフセット、無効なら-1 */
+              *addr2 ? *addr2 - prog : -1,
+              *addr3 ? *addr3 - prog : -1
+              );
+      /* アドレススロットの詳細も表示 */
+      fprintf(stderr, "\n");
+      fprintf(stderr, "[%04ld]   <addr1>    -> %ld\n", offset+1, *addr1 ? *addr1 - prog : -1);
+      fprintf(stderr, "[%04ld]   <addr2>    -> %ld\n", offset+2, *addr2 ? *addr2 - prog : -1);
+      fprintf(stderr, "[%04ld]   <addr3>    -> %ld", offset+3, *addr3 ? *addr3 - prog : -1);
+      break;
+    }
+    case OP_NONE:
+    default:
+      break;
+  }
+  fprintf(stderr, "\n");
+}
+
 void initcode(void) /* initialize for code generation */
 {
   stackp = stack; /* stackが空なので先頭のアドレスを代入 */
@@ -56,12 +156,15 @@ Inst *code(Inst f) /* install one instruction or operand */
 void execute(Inst *p) /* run the machine */
 {
   for(pc = p; *pc != STOP;){
-      /* 
-       * Inst f = *pc;
-       * pc++;
-       * f();
-       */
-      (*(*pc++))();
+    if (trace_enabled) {
+      trace_instructon(pc); /* マシンを表示 */
+    }
+    /* 
+     * Inst f = *pc;
+     * pc++;
+     * f();
+     */
+    (*(*pc++))();
   }
 }
 
@@ -135,15 +238,15 @@ void power(void) /* power */
   push(d1);
 }
 
-void eval(void) /* evaluate variable on stack */
+void eval(void) /* 変数シンボルを実際の値に変換する */
 {
   Datum d;
-  d = pop();
+  d = pop(); /* スタックから変数シンボルを取得 */
   if (d.sym->type == UNDEF){
     execerror("undefined variable", d.sym->name);
   }
-  d.val = d.sym->u.val;
-  push(d);
+  d.val = d.sym->u.val; /* シンボルから値を取り出す */
+  push(d); /* 値をスタックにpush */
 }
 
 void assign(void) /* assign top value to next value */
@@ -270,15 +373,22 @@ void whilecode()
 
 void ifcode()
 {
+  /*
+  [n]   ifcode命令
+  [n+1] then部へのポインタ
+  [n+2] else部へのポインタ
+  [n+3] 次の文へのポインタ
+  [n+4] 条件式コード
+   */
   Datum d;
-  Inst *savepc = pc; /* executeで既にインクリメント済みなのでこれがthen部分を指している */
-  execute(savepc+3); /* condition */
-  d = pop();
+  Inst *savepc = pc; /* executeでインクリメント済みなのでこれがthen部分を指している */
+  execute(savepc+3); /* if文の条件式を実行 */
+  d = pop(); /* 条件式の結果を取得 */
   if (d.val) {
-    execute(*((Inst **)(savepc)));
+    execute(*((Inst **)(savepc))); /* then部分を実行 */
   }
   else if (*((Inst **)(savepc+1))) { /* else part? */
-    execute(*((Inst **)(savepc+1)));
+    execute(*((Inst **)(savepc+1))); /* else部分を実行 */
   }
   pc = *((Inst **)(savepc+2)); /* next stmt */
 }
