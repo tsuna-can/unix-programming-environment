@@ -25,7 +25,7 @@ int follow(int expect, int ifyes, int ifno);
 }
 %token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE /* 終端記号 */
 %type <inst> stmt asgn expr stmtlist cond while if end /* 非終端記号 */
-%right '='
+%right '=' ADDEQ
 %left OR
 %left AND
 %left GT GE LT LE EQ NE
@@ -45,6 +45,10 @@ list:  /* nothing */
 asgn: VAR '=' expr {
       $$ = $3;
       code3(varpush, (Inst)$1, assign);
+    }
+    | VAR ADDEQ expr {
+      $$ = $3;
+      code3(varpush, (Inst)$1, addeq);
     }
     ;
 stmt: expr { code(popstack); }
@@ -128,6 +132,10 @@ expr: NUMBER {
     ;
 %%
 
+/** 
+* $$ = $1は省略できる
+**/
+
 /* end of grammar */
 
 char *progname;
@@ -186,6 +194,7 @@ int yylex(void)
     case '!': return follow('=', NE, NOT);
     case '|': return follow('|', OR, '|');
     case '&': return follow('&', AND, '&');
+    case '+': return follow('=', ADDEQ, '+');
     case '\n': lineno++; return '\n';
     default: return c;
   }

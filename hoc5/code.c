@@ -38,6 +38,7 @@ static struct {
   {power, "power", OP_NONE},
   {eval, "eval", OP_NONE},
   {assign, "assign", OP_NONE},
+  {addeq, "addeq", OP_NONE},
   {print, "print", OP_NONE},
   {prexpr, "prexpr", OP_NONE},
   {popstack, "popstack", OP_NONE},
@@ -262,6 +263,19 @@ void assign(void) /* assign top value to next value */
   push(d2);
 }
 
+void addeq()
+{
+  Datum d1, d2;
+  d1 = pop();
+  d2 = pop();
+  if (d1.sym->type != VAR){
+    execerror("cannot use += on undefined variable", d1.sym->name);
+  }
+  d2.val = d1.sym->u.val + d2.val;
+  d1.sym->u.val = d2.val; // 加算代入される変数の値を更新
+  push(d2);
+}
+
 void print(void) /* pop top value from stack, print it */
 {
   Datum d;
@@ -399,4 +413,4 @@ void prexpr() /* print numeric value */
   d = pop();
   printf("%.8g\n", d.val);
 }
- 
+
