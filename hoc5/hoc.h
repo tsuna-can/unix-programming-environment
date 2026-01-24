@@ -26,7 +26,7 @@ extern Inst *code(Inst f); /* 関数ポインタを引き数に取り、関数�
 extern void eval(void), add(void), sub(void), mul(void), divide(void), negate(void), power(void);
 extern void assign(void), bltin(void), varpush(void), constpush(void), print(void), popstack(void);
 extern void prexpr();
-extern void gt(void), lt(void), eq(void), ge(void), le(void), ne(void), and(void), or(void), not(void), addeq(void);
+extern void gt(void), lt(void), eq(void), ge(void), le(void), ne(void), and(void), or(void), not(void), addeq(void), subeq(void), muleq(void), diveq(void);
 extern void ifcode(void), whilecode(void);
 
 extern void execerror(const char *s, const char *t);

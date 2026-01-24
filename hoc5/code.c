@@ -39,6 +39,9 @@ static struct {
   {eval, "eval", OP_NONE},
   {assign, "assign", OP_NONE},
   {addeq, "addeq", OP_NONE},
+  {subeq, "subeq", OP_NONE},
+  {muleq, "muleq", OP_NONE},
+  {diveq, "diveq", OP_NONE},
   {print, "print", OP_NONE},
   {prexpr, "prexpr", OP_NONE},
   {popstack, "popstack", OP_NONE},
@@ -273,6 +276,48 @@ void addeq()
   }
   d2.val = d1.sym->u.val + d2.val;
   d1.sym->u.val = d2.val; // 加算代入される変数の値を更新
+  push(d2);
+}
+
+void subeq()
+{
+  Datum d1, d2;
+  d1 = pop();
+  d2 = pop();
+  if (d1.sym->type != VAR){
+    execerror("cannot use += on undefined variable", d1.sym->name);
+  }
+  d2.val = d1.sym->u.val - d2.val;
+  d1.sym->u.val = d2.val;
+  push(d2);
+}
+
+void muleq()
+{
+  Datum d1, d2;
+  d1 = pop();
+  d2 = pop();
+  if (d1.sym->type != VAR){
+    execerror("cannot use += on undefined variable", d1.sym->name);
+  }
+  d2.val = d1.sym->u.val * d2.val;
+  d1.sym->u.val = d2.val;
+  push(d2);
+}
+
+void diveq()
+{
+  Datum d1, d2;
+  d1 = pop();
+  d2 = pop();
+  if (d1.sym->type != VAR){
+    execerror("cannot use += on undefined variable", d1.sym->name);
+  }
+  if (d2.val == 0.0){
+    execerror("division by zero", (char *) 0);
+  }
+  d2.val = d1.sym->u.val / d2.val;
+  d1.sym->u.val = d2.val;
   push(d2);
 }
 
