@@ -44,6 +44,8 @@ static struct {
   {diveq, "diveq", OP_NONE},
   {pre_increment, "pre_increment", OP_NONE},
   {post_increment, "post_increment", OP_NONE},
+  {pre_decrement, "pre_decrement", OP_NONE},
+  {post_decrement, "post_decrement", OP_NONE},
   {print, "print", OP_NONE},
   {prexpr, "prexpr", OP_NONE},
   {popstack, "popstack", OP_NONE},
@@ -345,6 +347,30 @@ void post_increment()
   Datum d2 = {.val = d1.sym->u.val};
   push(d2);
   d1.sym->u.val += 1;
+}
+
+void pre_decrement()
+{
+  Datum d1;
+  d1 = pop();
+  if (d1.sym->type != VAR){
+    execerror("cannot use -- on undefined variable", d1.sym->name);
+  }
+  d1.sym->u.val -= 1;
+  Datum d2 = {.val = d1.sym->u.val};
+  push(d2);
+}
+
+void post_decrement()
+{
+  Datum d1;
+  d1 = pop();
+  if (d1.sym->type != VAR){
+    execerror("cannot use -- on undefined variable", d1.sym->name);
+  }
+  Datum d2 = {.val = d1.sym->u.val};
+  push(d2);
+  d1.sym->u.val -= 1;
 }
 
 void print(void) /* pop top value from stack, print it */
