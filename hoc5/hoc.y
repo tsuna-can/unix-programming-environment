@@ -25,7 +25,7 @@ int follow(int expect, int ifyes, int ifno);
 }
 %token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE /* 終端記号 */
 %type <inst> stmt asgn expr stmtlist cond while if end /* 非終端記号 */
-%right '=' ADDEQ SUBEQ MULEQ DIVEQ
+%right '=' ADDEQ SUBEQ MULEQ DIVEQ INCREMENT
 %left OR
 %left AND
 %left GT GE LT LE EQ NE
@@ -61,6 +61,14 @@ asgn: VAR '=' expr {
     | VAR DIVEQ expr {
       $$ = $3;
       code3(varpush, (Inst)$1, diveq);
+    }
+    | INCREMENT VAR {
+      $$ = $2;
+      code3(varpush, (Inst)$2, pre_increment);
+    }
+    | VAR INCREMENT {
+      $$ = $1;
+      code3(varpush, (Inst)$1, post_increment);
     }
     ;
 stmt: expr { code(popstack); }
@@ -206,7 +214,7 @@ int yylex(void)
     case '!': return follow('=', NE, NOT);
     case '|': return follow('|', OR, '|');
     case '&': return follow('&', AND, '&');
-    case '+': return follow('=', ADDEQ, '+');
+    case '+': return follow('=', ADDEQ, follow('+', INCREMENT, '+'));
     case '-': return follow('=', SUBEQ, '-');
     case '*': return follow('=', MULEQ, '*');
     case '/': return follow('=', DIVEQ, '/');

@@ -42,6 +42,8 @@ static struct {
   {subeq, "subeq", OP_NONE},
   {muleq, "muleq", OP_NONE},
   {diveq, "diveq", OP_NONE},
+  {pre_increment, "pre_increment", OP_NONE},
+  {post_increment, "post_increment", OP_NONE},
   {print, "print", OP_NONE},
   {prexpr, "prexpr", OP_NONE},
   {popstack, "popstack", OP_NONE},
@@ -285,7 +287,7 @@ void subeq()
   d1 = pop();
   d2 = pop();
   if (d1.sym->type != VAR){
-    execerror("cannot use += on undefined variable", d1.sym->name);
+    execerror("cannot use -= on undefined variable", d1.sym->name);
   }
   d2.val = d1.sym->u.val - d2.val;
   d1.sym->u.val = d2.val;
@@ -298,7 +300,7 @@ void muleq()
   d1 = pop();
   d2 = pop();
   if (d1.sym->type != VAR){
-    execerror("cannot use += on undefined variable", d1.sym->name);
+    execerror("cannot use *= on undefined variable", d1.sym->name);
   }
   d2.val = d1.sym->u.val * d2.val;
   d1.sym->u.val = d2.val;
@@ -311,7 +313,7 @@ void diveq()
   d1 = pop();
   d2 = pop();
   if (d1.sym->type != VAR){
-    execerror("cannot use += on undefined variable", d1.sym->name);
+    execerror("cannot use /= on undefined variable", d1.sym->name);
   }
   if (d2.val == 0.0){
     execerror("division by zero", (char *) 0);
@@ -319,6 +321,30 @@ void diveq()
   d2.val = d1.sym->u.val / d2.val;
   d1.sym->u.val = d2.val;
   push(d2);
+}
+
+void pre_increment()
+{
+  Datum d1;
+  d1 = pop();
+  if (d1.sym->type != VAR){
+    execerror("cannot use ++ on undefined variable", d1.sym->name);
+  }
+  d1.sym->u.val += 1;
+  Datum d2 = {.val = d1.sym->u.val};
+  push(d2);
+}
+
+void post_increment()
+{
+  Datum d1;
+  d1 = pop();
+  if (d1.sym->type != VAR){
+    execerror("cannot use ++ on undefined variable", d1.sym->name);
+  }
+  Datum d2 = {.val = d1.sym->u.val};
+  push(d2);
+  d1.sym->u.val += 1;
 }
 
 void print(void) /* pop top value from stack, print it */
