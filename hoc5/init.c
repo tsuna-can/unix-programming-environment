@@ -32,6 +32,7 @@ static struct { /* Keywords */
   "while", WHILE,
   "print", PRINT,
   "and", AND,
+  "or", OR,
   0,0
 };
 

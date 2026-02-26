@@ -548,6 +548,31 @@ void andcode()
   pc = *((Inst **)(savepc+1)); /* next stmt */
 }
 
+void orcode()
+{
+  /*
+  [n]   orcode命令
+  [n+1] 右辺へのポインタ
+  [n+2] 次の命令へのポインタ
+   */
+  Datum d1, d2, d3;
+  Inst *savepc = pc; /* executeでインクリメント済みなのでこれが右辺を指している */
+  d1 = pop(); /* 左辺の結果を取得 */
+  if (d1.val) {
+    d3.val = 1;
+  } else {    
+    execute(*((Inst **)(savepc))); /* 右辺を実行 */
+    d2 = pop(); /* 右辺の結果を取得 */
+    if (d2.val) {
+      d3.val = 1;
+    } else {
+      d3.val = 0;
+    }
+  }
+  push(d3);
+  pc = *((Inst **)(savepc+1)); /* next stmt */
+}
+
 void prexpr() /* print numeric value */
 {
   Datum d;

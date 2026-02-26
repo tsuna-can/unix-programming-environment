@@ -24,7 +24,7 @@ int follow(int expect, int ifyes, int ifno);
   Inst *inst; /* machine instruction */
 }
 %token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE /* 終端記号 */
-%type <inst> stmt asgn expr stmtlist cond while if end and /* 非終端記号 */
+%type <inst> stmt asgn expr stmtlist cond while if end and or /* 非終端記号 */
 %right '=' ADDEQ SUBEQ MULEQ DIVEQ INCREMENT DECREMENT
 %left OR
 %left AND
@@ -115,6 +115,10 @@ and: AND {
       $$ = code(andcode);
       code2(STOP, STOP);
     }
+or: OR {
+      $$ = code(orcode);
+      code2(STOP, STOP);
+    }
 end: /* nothing */ {
       code(STOP);
       $$ = progp;
@@ -155,7 +159,10 @@ expr: NUMBER {
       ($2)[1] = (Inst) $3; /* 右辺部分 */
       ($2)[2] = (Inst) progp; /* 次の命令 */
     }
-    | expr OR expr { code(or); }
+    | expr or expr end {
+      ($2)[1] = (Inst) $3; /* 右辺部分 */
+      ($2)[2] = (Inst) progp; /* 次の命令 */
+    }
     | NOT expr {
       $$ = $2;
       code(not);

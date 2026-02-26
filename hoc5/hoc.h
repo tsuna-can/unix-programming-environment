@@ -29,7 +29,7 @@ extern void prexpr();
 extern void gt(void), lt(void), eq(void), ge(void), le(void), ne(void), and(void), or(void), not(void);
 extern void addeq(void), subeq(void), muleq(void), diveq(void);
 extern void pre_increment(void), post_increment(void), pre_decrement(void), post_decrement(void);
-extern void ifcode(void), whilecode(void), andcode(void);
+extern void ifcode(void), whilecode(void), andcode(void), orcode(void);
 
 extern void execerror(const char *s, const char *t);
 
