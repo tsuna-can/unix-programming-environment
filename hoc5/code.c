@@ -27,99 +27,118 @@ static struct {
   Inst func;
   const char *name;
   int op_type;
+  int noperands; /* 命令の後に続くオペランドのスロット数 */
 } inst_table[] = {
-  {constpush, "constpush", OP_SYMBOL},
-  {varpush, "varpush", OP_SYMBOL},
-  {add, "add", OP_NONE},
-  {sub, "sub", OP_NONE},
-  {mul, "mul", OP_NONE},
-  {divide, "divide", OP_NONE},
-  {negate, "negate", OP_NONE},
-  {power, "power", OP_NONE},
-  {eval, "eval", OP_NONE},
-  {assign, "assign", OP_NONE},
-  {addeq, "addeq", OP_NONE},
-  {subeq, "subeq", OP_NONE},
-  {muleq, "muleq", OP_NONE},
-  {diveq, "diveq", OP_NONE},
-  {pre_increment, "pre_increment", OP_NONE},
-  {post_increment, "post_increment", OP_NONE},
-  {pre_decrement, "pre_decrement", OP_NONE},
-  {post_decrement, "post_decrement", OP_NONE},
-  {print, "print", OP_NONE},
-  {prexpr, "prexpr", OP_NONE},
-  {popstack, "popstack", OP_NONE},
-  {bltin, "bltin", OP_BLTIN},
-  {gt, "gt", OP_NONE},
-  {lt, "lt", OP_NONE},
-  {eq, "eq", OP_NONE},
-  {ge, "ge", OP_NONE},
-  {le, "le", OP_NONE},
-  {ne, "ne", OP_NONE},
-  {and, "and", OP_NONE},
-  {or, "or", OP_NONE},
-  {not, "not", OP_NONE},
-  {whilecode, "whilecode", OP_ADDRS},
-  {ifcode, "ifcode", OP_ADDRS},
-  {STOP, "STOP", OP_NONE},
-  {NULL, NULL, 0}  /* Sentinel */
+  {constpush, "constpush", OP_SYMBOL, 1},
+  {varpush, "varpush", OP_SYMBOL, 1},
+  {add, "add", OP_NONE, 0},
+  {sub, "sub", OP_NONE, 0},
+  {mul, "mul", OP_NONE, 0},
+  {divide, "divide", OP_NONE, 0},
+  {negate, "negate", OP_NONE, 0},
+  {power, "power", OP_NONE, 0},
+  {eval, "eval", OP_NONE, 0},
+  {assign, "assign", OP_NONE, 0},
+  {addeq, "addeq", OP_NONE, 0},
+  {subeq, "subeq", OP_NONE, 0},
+  {muleq, "muleq", OP_NONE, 0},
+  {diveq, "diveq", OP_NONE, 0},
+  {pre_increment, "pre_increment", OP_NONE, 0},
+  {post_increment, "post_increment", OP_NONE, 0},
+  {pre_decrement, "pre_decrement", OP_NONE, 0},
+  {post_decrement, "post_decrement", OP_NONE, 0},
+  {print, "print", OP_NONE, 0},
+  {prexpr, "prexpr", OP_NONE, 0},
+  {popstack, "popstack", OP_NONE, 0},
+  {bltin, "bltin", OP_BLTIN, 1},
+  {gt, "gt", OP_NONE, 0},
+  {lt, "lt", OP_NONE, 0},
+  {eq, "eq", OP_NONE, 0},
+  {ge, "ge", OP_NONE, 0},
+  {le, "le", OP_NONE, 0},
+  {ne, "ne", OP_NONE, 0},
+  {and, "and", OP_NONE, 0},
+  {or, "or", OP_NONE, 0},
+  {not, "not", OP_NONE, 0},
+  {whilecode, "whilecode", OP_ADDRS, 2},
+  {ifcode, "ifcode", OP_ADDRS, 3},
+  {andcode, "andcode", OP_ADDRS, 2},
+  {STOP, "STOP", OP_NONE, 0},
+  {NULL, NULL, 0, 0}  /* Sentinel */
 };
 
 /* 命令名検索 */
-static const char* lookup_inst_name(Inst func, int *op_type) {
+static const char* lookup_inst_name(Inst func, int *op_type, int *noperands) {
   int i;
-  for (i = 0; inst_table[i].func != NULL; i++) { /* センチネルまでループ */
+  /* STOPはNULLポインタなので先にチェック */
+  if (func == STOP) {
+    *op_type = OP_NONE;
+    *noperands = 0;
+    return "STOP";
+  }
+  for (i = 0; inst_table[i].name != NULL; i++) { /* センチネルまでループ */
     if (inst_table[i].func == func) {
       *op_type = inst_table[i].op_type;
+      *noperands = inst_table[i].noperands;
       return inst_table[i].name;
     }
   }
   *op_type = OP_NONE;
+  *noperands = 0;
   return "UNKNOWN";
 }
 
-/* マシンの情報を表示 */
-static void trace_instructon(Inst *pc_current) {
-  int op_type;
-  const char *name = lookup_inst_name(*pc_current, &op_type);
-  long offset = pc_current - prog;
+/* 1命令分の情報を表示 */
+static void print_inst(Inst *p) {
+  int op_type, nops;
+  const char *name = lookup_inst_name(*p, &op_type, &nops);
+  long offset = p - prog;
   int i;
 
-  fprintf(stderr, "[%04ld] %-12s", offset, name); /* 0埋めして4桁で表示、幅12文字 */
+  fprintf(stderr, "[%04ld] %-16s", offset, name);
 
-  /* op_typeに応じて出力 */
   switch(op_type){
     case OP_SYMBOL: {
-      Symbol *sym = (Symbol *)(*(pc_current + 1));
+      Symbol *sym = (Symbol *)(*(p + 1));
       fprintf(stderr, " sym='%s' val=%.8g", sym->name, sym->u.val);
       break;
     }
     case OP_BLTIN: {
-      void *func = (void *)(*(pc_current + 1));
-      fprintf(stderr, "func=%p", func);
+      void *func = (void *)(*(p + 1));
+      fprintf(stderr, " func=%p", func);
       break;
     }
     case OP_ADDRS: {
-      Inst **addr1 = (Inst **)(pc_current + 1);
-      Inst **addr2 = (Inst **)(pc_current + 2);
-      Inst **addr3 = (Inst **)(pc_current + 3);
-      fprintf(stderr, " [%ld,%ld,%ld]", 
-              *addr1 ? *addr1 - prog : -1, /* アドレスが有効ならオフセット、無効なら-1 */
-              *addr2 ? *addr2 - prog : -1,
-              *addr3 ? *addr3 - prog : -1
-              );
-      /* アドレススロットの詳細も表示 */
+      for (i = 1; i <= nops; i++) {
+        Inst *addr = (Inst *)(*(p + i));
+        fprintf(stderr, " [%ld]", addr ? addr - prog : -1L);
+      }
       fprintf(stderr, "\n");
-      fprintf(stderr, "[%04ld]   <addr1>    -> %ld\n", offset+1, *addr1 ? *addr1 - prog : -1);
-      fprintf(stderr, "[%04ld]   <addr2>    -> %ld\n", offset+2, *addr2 ? *addr2 - prog : -1);
-      fprintf(stderr, "[%04ld]   <addr3>    -> %ld", offset+3, *addr3 ? *addr3 - prog : -1);
-      break;
+      for (i = 1; i <= nops; i++) {
+        Inst *addr = (Inst *)(*(p + i));
+        fprintf(stderr, "[%04ld]   <addr%d>      -> %ld\n", offset+i, i, addr ? addr - prog : -1L);
+      }
+      return; /* 改行済みなのでここで返す */
     }
     case OP_NONE:
     default:
       break;
   }
   fprintf(stderr, "\n");
+}
+
+/* マシンの全命令を表示 */
+void dump_code(void) {
+  Inst *p;
+  int op_type, nops;
+
+  fprintf(stderr, "--- program dump ---\n");
+  for (p = prog; p < progp; ) {
+    lookup_inst_name(*p, &op_type, &nops);
+    print_inst(p);
+    p += 1 + nops;
+  }
+  fprintf(stderr, "--- end dump ---\n");
 }
 
 void initcode(void) /* initialize for code generation */
@@ -165,7 +184,7 @@ void execute(Inst *p) /* run the machine */
 {
   for(pc = p; *pc != STOP;){
     if (trace_enabled) {
-      trace_instructon(pc); /* マシンを表示 */
+      print_inst(pc); /* マシンを表示 */
     }
     /* 
      * Inst f = *pc;
@@ -502,6 +521,31 @@ void ifcode()
     execute(*((Inst **)(savepc+1))); /* else部分を実行 */
   }
   pc = *((Inst **)(savepc+2)); /* next stmt */
+}
+
+void andcode()
+{
+  /*
+  [n]   andcode命令
+  [n+1] 右辺へのポインタ
+  [n+2] 次の命令へのポインタ
+   */
+  Datum d1, d2, d3;
+  Inst *savepc = pc; /* executeでインクリメント済みなのでこれが右辺を指している */
+  d1 = pop(); /* 左辺の結果を取得 */
+  if (d1.val) {
+    execute(*((Inst **)(savepc))); /* 右辺を実行 */
+    d2 = pop(); /* 右辺の結果を取得 */
+    if (d2.val) {
+      d3.val = 1;
+    } else {
+      d3.val = 0;
+    }
+  } else {    
+    d3.val = 0;
+  }
+  push(d3);
+  pc = *((Inst **)(savepc+1)); /* next stmt */
 }
 
 void prexpr() /* print numeric value */

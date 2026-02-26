@@ -24,7 +24,7 @@ int follow(int expect, int ifyes, int ifno);
   Inst *inst; /* machine instruction */
 }
 %token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE /* 終端記号 */
-%type <inst> stmt asgn expr stmtlist cond while if end /* 非終端記号 */
+%type <inst> stmt asgn expr stmtlist cond while if end and /* 非終端記号 */
 %right '=' ADDEQ SUBEQ MULEQ DIVEQ INCREMENT DECREMENT
 %left OR
 %left AND
@@ -63,20 +63,16 @@ asgn: VAR '=' expr {
       code3(varpush, (Inst)$1, diveq);
     }
     | INCREMENT VAR {
-      $$ = $2;
-      code3(varpush, (Inst)$2, pre_increment);
+      $$ = code3(varpush, (Inst)$2, pre_increment);
     }
     | VAR INCREMENT {
-      $$ = $1;
-      code3(varpush, (Inst)$1, post_increment);
+      $$ = code3(varpush, (Inst)$1, post_increment);
     }
     | DECREMENT VAR {
-      $$ = $2;
-      code3(varpush, (Inst)$2, pre_decrement);
+      $$ = code3(varpush, (Inst)$2, pre_decrement);
     }
     | VAR DECREMENT {
-      $$ = $1;
-      code3(varpush, (Inst)$1, post_decrement);
+      $$ = code3(varpush, (Inst)$1, post_decrement);
     }
     ;
 stmt: expr { code(popstack); }
@@ -96,7 +92,7 @@ stmt: expr { code(popstack); }
       ($1)[1] = (Inst)$3; /* then part */
       ($1)[2] = (Inst)$6; /* else part */
       ($1)[3] = (Inst)$7; /* end, if cond fails */
-      }
+    }
     | '{' stmtlist '}' {
       $$ = $2;
     }
@@ -115,6 +111,10 @@ if: IF {
       code3(STOP, STOP, STOP);
     }
     ;
+and: AND {
+      $$ = code(andcode);
+      code2(STOP, STOP);
+    }
 end: /* nothing */ {
       code(STOP);
       $$ = progp;
@@ -151,7 +151,10 @@ expr: NUMBER {
     | expr LE expr { code(le); }
     | expr EQ expr { code(eq); }
     | expr NE expr { code(ne); }
-    | expr AND expr { code(and); }
+    | expr and expr end {
+      ($2)[1] = (Inst) $3; /* 右辺部分 */
+      ($2)[2] = (Inst) progp; /* 次の命令 */
+    }
     | expr OR expr { code(or); }
     | NOT expr {
       $$ = $2;
@@ -176,6 +179,7 @@ int main(int argc, char *argv[])
   setjmp(begin);
   signal(SIGFPE, fpecatch);
   for (initcode(); yyparse(); initcode()) {
+    dump_code();
     execute(prog);
   }
   return 0;
