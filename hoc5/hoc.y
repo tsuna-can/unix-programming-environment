@@ -7,6 +7,7 @@
 #include "hoc.h"
 #define code2(c1,c2) code(c1); code(c2);
 #define code3(c1,c2,c3) code(c1); code(c2); code(c3);
+#define code6(c1,c2,c3,c4,c5,c6) code(c1); code(c2); code(c3); code(c4); code(c5); code(c6);
 
 int yylex(void);
 void yyerror(const char *s);
@@ -23,8 +24,8 @@ int follow(int expect, int ifyes, int ifno);
   Symbol *sym;  /* symbol table pointer */
   Inst *inst; /* machine instruction */
 }
-%token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE /* 終端記号 */
-%type <inst> stmt asgn expr stmtlist cond while if end and or /* 非終端記号 */
+%token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE FOR /* 終端記号 */
+%type <inst> stmt asgn expr stmtlist cond while if end and or for /* 非終端記号 */
 %right '=' ADDEQ SUBEQ MULEQ DIVEQ INCREMENT DECREMENT
 %left OR
 %left AND
@@ -84,6 +85,13 @@ stmt: expr { code(popstack); }
       ($1)[1] = (Inst)$3; /* body of loop */
       ($1)[2] = (Inst)$4; /* end, if cond fails */
     }
+    | for '(' expr ';' expr ';' expr ')' stmt end {
+      ($1)[1] = (Inst)$3; /* 初期化式 */
+      ($1)[2] = (Inst)$5; /* 条件式 */
+      ($1)[3] = (Inst)$7; /* 更新式 */
+      ($1)[4] = (Inst)$9; /* ループ内部の文 */
+      ($1)[5] = (Inst)$10; /* 次の文 */
+    }
     | if cond stmt end { /* else-less if */
       ($1)[1] = (Inst)$3; /* then part */
       ($1)[3] = (Inst)$4; /* end, if cond fails */
@@ -104,6 +112,10 @@ cond: '(' expr ')' {
     ;
 while: WHILE {
       $$ = code3(whilecode, STOP, STOP);
+    }
+    ;
+for: FOR {
+      $$ = code6(forcode, STOP, STOP, STOP, STOP, STOP);
     }
     ;
 if: IF {

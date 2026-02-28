@@ -61,6 +61,7 @@ static struct {
   {or, "or", OP_NONE, 0},
   {not, "not", OP_NONE, 0},
   {whilecode, "whilecode", OP_ADDRS, 2},
+  {forcode, "forcode", OP_ADDRS, 6},
   {ifcode, "ifcode", OP_ADDRS, 3},
   {andcode, "andcode", OP_ADDRS, 2},
   {STOP, "STOP", OP_NONE, 0},
@@ -499,6 +500,30 @@ void whilecode()
     d = pop();
   }
   pc = *((Inst **)(savepc+1)); /* next statement */
+}
+
+void forcode()
+{
+  /*
+  [n]   forcode命令
+  [n+1] 初期化式
+  [n+2] 条件式
+  [n+3] 更新式
+  [n+4] ループの内部
+  [n+5] 次の文
+   */
+  Datum d;
+  Inst *savepc = pc;
+  execute(*((Inst **)(savepc))); /* 初期化式の実行 */
+  execute(*((Inst **)(savepc+1))); /* 条件式の実行 */
+  d = pop();
+  while (d.val){
+    execute(*((Inst **)(savepc+3))); /* body */
+    execute(*((Inst **)(savepc+2))); /* 更新式の実行 */
+    execute(*((Inst **)(savepc+1))); /* 条件式の実行 */
+    d = pop();
+  }
+  pc = *((Inst **)(savepc+4)); /* next statement */
 }
 
 void ifcode()

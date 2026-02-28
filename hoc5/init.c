@@ -33,6 +33,7 @@ static struct { /* Keywords */
   "print", PRINT,
   "and", AND,
   "or", OR,
+  "for", FOR,
   0,0
 };
 
