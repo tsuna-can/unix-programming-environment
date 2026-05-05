@@ -25,7 +25,7 @@ int follow(int expect, int ifyes, int ifno);
   Inst *inst; /* machine instruction */
 }
 %token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE FOR /* 終端記号 */
-%type <inst> stmt asgn expr stmtlist cond while if end and or for /* 非終端記号 */
+%type <inst> stmt asgn expr stmtlist cond while if end and or for forcond optional /* 非終端記号 */
 %right '=' ADDEQ SUBEQ MULEQ DIVEQ INCREMENT DECREMENT
 %left OR
 %left AND
@@ -81,16 +81,16 @@ stmt: expr { code(popstack); }
       code(prexpr);
       $$ = $2;
     }
+    | for '(' optional ';' end forcond ';' end optional ')' end stmt end {
+      ($1)[1] = (Inst)$3; /* 初期化式 */
+      ($1)[2] = (Inst)$6; /* 条件式 */
+      ($1)[3] = (Inst)$9; /* 更新式 */
+      ($1)[4] = (Inst)$12; /* ループ内部の文 */
+      ($1)[5] = (Inst)$13; /* 次の文 */
+    }
     | while cond stmt end {
       ($1)[1] = (Inst)$3; /* body of loop */
       ($1)[2] = (Inst)$4; /* end, if cond fails */
-    }
-    | for '(' expr ';' expr ';' expr ')' stmt end {
-      ($1)[1] = (Inst)$3; /* 初期化式 */
-      ($1)[2] = (Inst)$5; /* 条件式 */
-      ($1)[3] = (Inst)$7; /* 更新式 */
-      ($1)[4] = (Inst)$9; /* ループ内部の文 */
-      ($1)[5] = (Inst)$10; /* 次の文 */
     }
     | if cond stmt end { /* else-less if */
       ($1)[1] = (Inst)$3; /* then part */
@@ -117,6 +117,12 @@ while: WHILE {
 for: FOR {
       $$ = code6(forcode, STOP, STOP, STOP, STOP, STOP);
     }
+    ;
+optional: expr
+    | /* nothing */ { $$ = progp; }
+    ;
+forcond: expr
+    | /* nothing */ { $$ = code(push1); }
     ;
 if: IF {
       $$ = code(ifcode);

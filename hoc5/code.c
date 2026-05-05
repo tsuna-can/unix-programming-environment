@@ -605,3 +605,10 @@ void prexpr() /* print numeric value */
   printf("%.8g\n", d.val);
 }
 
+void push1()
+{
+  Datum d;
+  d.val = 1;
+  push(d);
+}
+
