@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build hoc5 (debug)",
+      "type": "shell",
+      "command": "make hoc5",
+      "options": {
+        "cwd": "${workspaceFolder}/hoc5"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$gcc"
+    }
+  ]
+}

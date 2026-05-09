@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug hoc5",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/hoc5/hoc5",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/hoc5",
+      "environment": [],
+      "externalConsole": true,
+      "MIMode": "lldb",
+      "preLaunchTask": "build hoc5 (debug)"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 YACC = bison -y
 YFLAGS = -d
+CFLAGS = -g -O0
 OBJS = hoc.o code.o init.o math.o symbol.o
 
 hoc5: $(OBJS)
