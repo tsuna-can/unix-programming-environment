@@ -5,6 +5,7 @@ OBJS = hoc.o code.o init.o math.o symbol.o
 
 hoc5: $(OBJS)
 	cc $(OBJS) -lm -o hoc5
+	dsymutil hoc5
 
 hoc.o code.o init.o symbol.o: hoc.h
 
