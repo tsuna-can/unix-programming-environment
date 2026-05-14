@@ -21,7 +21,9 @@ Inst *pc;
 #define OP_ADDRS 3 /* 複数のアドレスを利用するもの if, while など */
 
 /* マシンのデバック表示をするか */
-static int trace_enabled = 1;
+static int trace_enabled = 0;
+
+static int break_flag = 0;
 
 static struct {
   Inst func;
@@ -187,12 +189,16 @@ void execute(Inst *p) /* run the machine */
     if (trace_enabled) {
       print_inst(pc); /* マシンを表示 */
     }
+    if (break_flag) {
+      fprintf(stderr, "break at [%ld]\n", pc - prog);
+      return;
+    } 
     /* 
      * Inst f = *pc;
      * pc++;
      * f();
      */
-    (*(*pc++))();
+      (*(*pc++))();
   }
 }
 
@@ -502,6 +508,10 @@ void whilecode()
   pc = *((Inst **)(savepc+1)); /* next statement */
 }
 
+void breakcode(){
+  break_flag = 1;
+}
+
 void forcode()
 {
   /*
@@ -519,10 +529,14 @@ void forcode()
   d = pop();
   while (d.val){
     execute(*((Inst **)(savepc+3))); /* body */
+    if (break_flag){
+      break;
+    }
     execute(*((Inst **)(savepc+2))); /* 更新式の実行 */
     execute(*((Inst **)(savepc+1))); /* 条件式の実行 */
     d = pop();
   }
+  break_flag = 0; /* breakフラグをリセット */
   pc = *((Inst **)(savepc+4)); /* next statement */
 }
 

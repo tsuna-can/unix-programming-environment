@@ -1,2 +1,2 @@
-x = 5
-x
+for(i=0; i<5; i++){ for(j=100; j<300; j++){ if (j==101){break} print j} print i}
+print 99999999
