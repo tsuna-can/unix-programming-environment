@@ -24,8 +24,8 @@ int follow(int expect, int ifyes, int ifno);
   Symbol *sym;  /* symbol table pointer */
   Inst *inst; /* machine instruction */
 }
-%token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE FOR BREAK /* 終端記号 */
-%type <inst> stmt asgn expr stmtlist cond while if end and or for forcond optional break /* 非終端記号 */
+%token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE FOR BREAK CONTINUE /* 終端記号 */
+%type <inst> stmt asgn expr stmtlist cond while if end and or for forcond optional break continue /* 非終端記号 */
 %right '=' ADDEQ SUBEQ MULEQ DIVEQ INCREMENT DECREMENT
 %left AND OR
 %left GT GE LT LE EQ NE
@@ -77,6 +77,7 @@ asgn: VAR '=' expr {
     ;
 stmt: expr { code(popstack); }
     | break
+    | continue
     | PRINT expr {
       code(prexpr);
       $$ = $2;
@@ -141,6 +142,10 @@ or: OR {
     ;
 break: BREAK {
       $$ = code(breakcode);
+    }
+    ;
+continue: CONTINUE {
+      $$ = code(continuecode);
     }
     ;
 end: /* nothing */ {

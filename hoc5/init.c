@@ -35,6 +35,7 @@ static struct { /* Keywords */
   "or", OR,
   "for", FOR,
   "break", BREAK,
+  "continue", CONTINUE,
   0,0
 };
 

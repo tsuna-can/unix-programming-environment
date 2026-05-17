@@ -24,6 +24,7 @@ Inst *pc;
 static int trace_enabled = 0;
 
 static int break_flag = 0;
+static int continue_flag =0;
 
 static struct {
   Inst func;
@@ -191,6 +192,10 @@ void execute(Inst *p) /* run the machine */
     }
     if (break_flag) {
       fprintf(stderr, "break at [%ld]\n", pc - prog);
+      return;
+    } 
+    if (continue_flag) {
+      fprintf(stderr, "continue at [%ld]\n", pc - prog);
       return;
     } 
     /* 
@@ -512,6 +517,10 @@ void breakcode(){
   break_flag = 1;
 }
 
+void continuecode(){
+  continue_flag = 1;
+}
+
 void forcode()
 {
   /*
@@ -531,6 +540,9 @@ void forcode()
     execute(*((Inst **)(savepc+3))); /* body */
     if (break_flag){
       break;
+    }
+    if (continue_flag){
+      continue_flag = 0;
     }
     execute(*((Inst **)(savepc+2))); /* 更新式の実行 */
     execute(*((Inst **)(savepc+1))); /* 条件式の実行 */
