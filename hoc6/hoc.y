@@ -28,6 +28,7 @@ int gargc;
 int c; /* global for use by warning() */
 int backslash(int c);
 int moreinput(void);
+void run(void);
 %}
 
 %union{
@@ -298,14 +299,49 @@ jmp_buf begin;
 int main(int argc, char *argv[])
 {
   progname = argv[0];
+  if (argc == 1) {
+    static char *stdinonly[] = { "-" };
+    gargv = stdinonly;
+    gargc = 1;
+  } else {
+    gargv = argv + 1;
+    gargc = argc - 1;
+  }
   init();
+  while (moreinput()) {
+    run();
+  }
+  return 0;
+}
+
+int moreinput()
+{
+  if (gargc-- <= 0){
+    return 0;
+  }
+  if (fin && fin != stdin) {
+    fclose(fin);
+  }
+  infile = *gargv++;
+  lineno = 1;
+  if (strcmp(infile, "-") == 0 ){
+    fin = stdin;
+    infile = 0;
+  } else if (( fin=fopen(infile, "r")) == NULL) {
+    fprintf(stderr, "%s: can't open %s\n", progname, infile);
+    return moreinput();
+  }
+  return 1;
+}
+
+void run ()
+{
   setjmp(begin);
   signal(SIGFPE, fpecatch);
   for (initcode(); yyparse(); initcode()) {
     dump_code();
     execute(prog);
   }
-  return 0;
 }
 
 int yylex(void)
@@ -317,6 +353,13 @@ int yylex(void)
   }
   if (c == EOF) {
     return 0;
+  }
+  if (c == '.' || isdigit(c)) { /* number */
+    double d;
+    ungetc(c, stdin);
+    scanf("%lf", &d);
+    yylval.sym = install("", NUMBER, d);
+    return NUMBER;
   }
   if (isalpha(c)) { /* alphabet */
     Symbol *s;
@@ -335,12 +378,34 @@ int yylex(void)
     }
     return s->type;
   }
-  if (c == '.' || isdigit(c)) { /* number */
-    double d;
-    ungetc(c, stdin);
-    scanf("%lf", &d);
-    yylval.sym = install("", NUMBER, d);
-    return NUMBER;
+  if ( c == '$') { /* argument? */ 
+    int n = 0;
+    while (isdigit(c=getc(fin))) {
+      n = 10 * n + c - '0';
+    }
+    ungetc(c, fin);
+    if (n == 0) {
+      execerror("strange $...", (char*)0);
+    }
+    yylval.narg = n;
+    return ARG;
+  }
+  if ( c == '"') { /* quoted string */
+    char sbuf[100], *p, *emalloc();
+    for ( p = sbuf; (c=getc(fin)) != '"'; p++) {
+      if (c == '\n' || c == EOF) {
+        execerror("missing quote", "");
+      }
+      if (p >= sbuf + sizeof(sbuf) -1 ) {
+        *p = '\0';
+        execerror("string too long" , sbuf);
+      }
+      *p = backslash(c);
+    }
+    *p = 0;
+    yylval.sym = (Symbol *)emalloc(strlen(sbuf)+1);
+    strcpy(yylval.sym, sbuf);
+    return STRING;
   }
   switch (c) {
     case '>': return follow('=', GE, GT);
@@ -359,29 +424,6 @@ int yylex(void)
   if (c == '\n') { /* return */
     lineno++;
     return '\n';
-  }
-  if ( c == '$') { /* argument? */ 
-    int n = 0;
-    while (isdigit(c=getc(fin)))  n = 10 * n + c - '0';
-    ungetc(c, fin);
-    if ( n == 0) execerror("strange $...", (char*)0);
-    yylval.narg = n;
-    return ARG;
-  }
-  if ( c == '"') { /* quoted string */
-    char sbuf[100], *p, *emalloc();
-    for ( p = sbuf; ( c=getc(fin)) != '"'; p++) {
-      if (c == '\n' || c == EOF) execerror("missing quote", "");
-      if (p >= sbuf + sizeof(sbuf) -1 ) {
-        *p = '\0';
-        execerror("string too long" , sbuf);
-      }
-      *p = backslash(c);
-    }
-    *p = 0;
-    yylval.sym = (Symbol*)emalloc(strlen(sbuf)+1);
-    strcpy(yylval.sym, sbuf);
-    return STRING;
   }
   return c;
 }
@@ -436,25 +478,5 @@ int backslash(int c) /* get next char with \'s interpreted */
   c = getc(fin);
   if ( islower(c) && index(transtab, c)) return index(transtab, c)[1];
   return c;
-}
-
-int moreinput()
-{
-  if (gargc-- <= 0){
-    return 0;
-  }
-  if (fin && fin != stdin) {
-    fclose(fin);
-  }
-  infile = *gargv++;
-  lineno = 1;
-  if (strcmp(infile, "-") == 0 ){
-    fin = stdin;
-    infile = 0;
-  } else if (( fin=fopen(infile, "r")) == NULL) {
-    fprintf(stderr, "%s: can't open %s\n", progname, infile);
-    return moreinput();
-  }
-  return 1;
 }
 

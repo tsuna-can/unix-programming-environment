@@ -677,7 +677,7 @@ void call() /* call a function */
   fp->nargs = (int)pc[1];
   fp->retpc = pc +2;
   fp->argn = stackp -1; /* last argument */
-  execute(sp->u.defn);
+  execute((Inst *)sp->u.defn);
   returning = 0;
 }
 
@@ -712,7 +712,7 @@ double *getarg() /* return pointer to argument */
 {
   int nargs = (int) *pc++;
   if (nargs > fp->nargs) execerror(fp->sp->name, "not enough arguments");
-  return &fp->argn[nargs = fp->nargs].val;
+  return &fp->argn[nargs - fp->nargs].val;
 }
 
 void arg() /*push argument onto stack */
