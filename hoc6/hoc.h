@@ -1,9 +1,14 @@
+typedef void (*Inst)(); /* machine instruction (voidを返す関数へのポインタ) */
+#define STOP (Inst) 0 /* 0をInst型にキャスト NULLポインタとして利用 */
+
 typedef struct Symbol { /* Symbol table entry */
   char *name;
   short type; /* VAR, BLTIN, UNDEF */
   union {
     double val;      /* if VAR */
     double (*ptr)(); /* if BLTIN */
+    Inst defn; /* FUNCTION, PROCEDURE */
+    char *str; /* STRING */
   } u;
   struct Symbol *next; /* to link to another */
 } Symbol;
@@ -16,9 +21,6 @@ typedef union Datum { /* interpreter stack type */
   Symbol *sym;
 } Datum;
 extern Datum pop();
-
-typedef void (*Inst)(); /* machine instruction (voidを返す関数へのポインタ) */
-#define STOP (Inst) 0 /* 0をInst型にキャスト NULLポインタとして利用 */
 
 extern Inst prog[];
 extern Inst *progp;
@@ -39,3 +41,6 @@ extern void push(Datum d);
 extern void initcode(void);
 extern void execute(Inst *p);
 extern void dump_code(void);
+extern void argassign(void), call(void), funcret(void), procret(void), ret(void), arg(void), prstr(void), preexpr(void), varread(void);
+extern void define(Symbol *sp);
+extern int moreinput(void);

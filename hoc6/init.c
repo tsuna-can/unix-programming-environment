@@ -36,6 +36,10 @@ static struct { /* Keywords */
   "for", FOR,
   "break", BREAK,
   "continue", CONTINUE,
+  "func", FUNC,
+  "proc", PROC,
+  "return", RETURN,
+  "read", READ,
   0,0
 };
 

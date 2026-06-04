@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <stdlib.h>
+#include <string.h>
 #include "hoc.h"
 #define code2(c1,c2) code(c1); code(c2);
 #define code3(c1,c2,c3) code(c1); code(c2); code(c3);
@@ -17,15 +18,29 @@ void fpecatch(int sig);
 void init(void);
 void initcode(void);
 void execute(Inst *p);
-int follow(int expect, int ifyes, int ifno); 
+int follow(int expect, int ifyes, int ifno);
+void defnonly(char *s);
+int indef;
+char *infile; /* input file name */
+FILE *fin; /* inptu file pointer */
+char **gargv; /* global argument list */
+int gargc;
+int c; /* global for use by warning() */
+int backslash(int c);
+int moreinput(void);
 %}
 
 %union{
   Symbol *sym;  /* symbol table pointer */
   Inst *inst; /* machine instruction */
+  int narg; /* number of arguments */
 }
-%token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE FOR BREAK CONTINUE /* 終端記号 */
-%type <inst> stmt asgn expr stmtlist cond while if end and or for forcond optional break continue /* 非終端記号 */
+%token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE FOR BREAK CONTINUE STRING /* 終端記号 */
+%token <sym> FUNCTION PROCEDURE RETURN FUNC PROC READ
+%token <narg> ARG
+%type <inst> stmt asgn expr prlist stmtlist cond while if begin end and or for forcond optional break continue /* 非終端記号 */
+%type <sym> procname
+%type <narg> arglist
 %right '=' ADDEQ SUBEQ MULEQ DIVEQ INCREMENT DECREMENT
 %left AND OR
 %left GT GE LT LE EQ NE
@@ -37,6 +52,7 @@ int follow(int expect, int ifyes, int ifno);
 
 list:  /* nothing */
     | list '\n'
+    | list defn '\n'
     | list asgn '\n' { code2(popstack, STOP); return 1; }
     | list stmt '\n' { code(STOP); return 1; }
     | list expr '\n' { code2(print, STOP); return 1; }
@@ -45,6 +61,11 @@ list:  /* nothing */
 asgn: VAR '=' expr {
       $$ = $3;
       code3(varpush, (Inst)$1, assign);
+    }
+    | ARG '=' expr {
+      defnonly("$");
+      code2(argassign, (Inst)$1);
+      $$=$3;
     }
     | VAR ADDEQ expr {
       $$ = $3;
@@ -76,6 +97,22 @@ asgn: VAR '=' expr {
     }
     ;
 stmt: expr { code(popstack); }
+    | RETURN {
+      defnonly("return");
+      code(procret);
+    }
+    | RETURN expr {
+      defnonly("return");
+      $$=$2;
+      code(funcret);
+    }
+    | PROCEDURE begin '(' arglist ')' {
+      $$=$2;
+      code3(call, (Inst)$1, (Inst)$4);
+    }
+    | PRINT prlist {
+      $$=$2;
+    }
     | break
     | continue
     | PRINT expr {
@@ -163,7 +200,18 @@ expr: NUMBER {
     | VAR { 
       $$ = code3(varpush, (Inst)$1, eval); 
     }
+    | ARG {
+      defnonly("$");
+      $$=code2(arg, (Inst)$1);
+    }
     | asgn
+    | FUNCTION begin '(' arglist ')' {
+      $$=$2;
+      code3(call, (Inst)$1, (Inst)$4);
+    }
+    | READ '(' VAR ')' {
+      $$=code2(varread, (Inst)$3);
+    }
     | BLTIN '(' expr ')' {
       $$ = $3;
       code2(bltin, (Inst)$1->u.ptr); 
@@ -196,6 +244,45 @@ expr: NUMBER {
       $$ = $2;
       code(not);
     }
+    ;
+begin: /* nothing */ {
+       $$=progp;
+    }
+    ;
+prlist: expr { code(prexpr); }
+    | STRING {
+      $$=code2(prstr, (Inst)$1);
+    }
+    | prlist ',' expr {
+      code(prexpr);
+    }
+    | prlist ',' STRING {
+      code2(prstr, (Inst)$3);
+    }
+    ;
+defn: FUNC procname {
+    $2->type=FUNCTION;
+    indef=1;
+    }
+    '(' ')' stmt {
+      code(procret);
+      define($2);
+      indef=0;
+    }
+    | PROC procname {$2->type=PROCEDURE; indef=1;}
+     '(' ')' stmt {
+      code(procret);
+      define($2);
+      indef=0;
+    }
+    ;
+procname: VAR
+    | FUNCTION
+    | PROCEDURE
+    ;
+arglist: /* nothing */ { $$=0; }
+    | expr { $$=1; }
+    | arglist ',' expr { $$=$1 + 1; }
     ;
 %%
 
@@ -273,6 +360,29 @@ int yylex(void)
     lineno++;
     return '\n';
   }
+  if ( c == '$') { /* argument? */ 
+    int n = 0;
+    while (isdigit(c=getc(fin)))  n = 10 * n + c - '0';
+    ungetc(c, fin);
+    if ( n == 0) execerror("strange $...", (char*)0);
+    yylval.narg = n;
+    return ARG;
+  }
+  if ( c == '"') { /* quoted string */
+    char sbuf[100], *p, *emalloc();
+    for ( p = sbuf; ( c=getc(fin)) != '"'; p++) {
+      if (c == '\n' || c == EOF) execerror("missing quote", "");
+      if (p >= sbuf + sizeof(sbuf) -1 ) {
+        *p = '\0';
+        execerror("string too long" , sbuf);
+      }
+      *p = backslash(c);
+    }
+    *p = 0;
+    yylval.sym = (Symbol*)emalloc(strlen(sbuf)+1);
+    strcpy(yylval.sym, sbuf);
+    return STRING;
+  }
   return c;
 }
 
@@ -309,5 +419,42 @@ void warning(const char *s, const char *t)
     fprintf(stderr, "%s", t);
   }
   fprintf(stderr, " near line %d\n", lineno);
+}
+
+void defnonly(char *s) /* warn if illegal definition */
+{
+  if (!indef){
+    execerror(s, "used outside definition");
+    }
+}
+
+int backslash(int c) /* get next char with \'s interpreted */ 
+{
+  char *index(); /* `strchar()' in some system */
+  static char transtab[] = "b\bf\fn\nr\rt\t";
+  if ( c != '\\' ) return c;
+  c = getc(fin);
+  if ( islower(c) && index(transtab, c)) return index(transtab, c)[1];
+  return c;
+}
+
+int moreinput()
+{
+  if (gargc-- <= 0){
+    return 0;
+  }
+  if (fin && fin != stdin) {
+    fclose(fin);
+  }
+  infile = *gargv++;
+  lineno = 1;
+  if (strcmp(infile, "-") == 0 ){
+    fin = stdin;
+    infile = 0;
+  } else if (( fin=fopen(infile, "r")) == NULL) {
+    fprintf(stderr, "%s: can't open %s\n", progname, infile);
+    return moreinput();
+  }
+  return 1;
 }
 

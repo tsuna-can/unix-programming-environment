@@ -12,6 +12,20 @@ static Datum *stackp; /* next free spot on stack */
 Inst prog[NPROG]; /* the machine */
 Inst *progp; /* next free spot for code generation */
 
+Inst *progbase = prog; /* start of current subprogram */
+int returning; /* 1 if return stmt seen */
+
+typedef struct Frame { /* proc/func call stack frame */
+  Symbol *sp; /* symbol table entry */
+  Inst *retpc; /* where to resume after return */
+  Datum *argn; /* nth argument on stack */
+  int nargs; /* number of arguments */
+} Frame;
+
+#define NFRAME 100
+Frame frame[NFRAME];
+Frame *fp; /* frame pointer */
+
 Inst *pc;
 
 /* 命令オペランドタイプを示す定数 マシンの表示に使用する */
@@ -147,8 +161,11 @@ void dump_code(void) {
 
 void initcode(void) /* initialize for code generation */
 {
+  progp = progbase;
   stackp = stack; /* stackが空なので先頭のアドレスを代入 */
-  progp = prog; /* progが空なので先頭のアドレスを代入 */
+  fp = frame;
+  returning = 0;
+  // progp = prog; /* progが空なので先頭のアドレスを代入 */
 }
 
 void push(Datum d) /* push d onto stack */
@@ -186,7 +203,7 @@ Inst *code(Inst f) /* install one instruction or operand */
 
 void execute(Inst *p) /* run the machine */
 {
-  for(pc = p; *pc != STOP;){
+  for(pc = p; *pc != STOP && !returning; ){
     if (trace_enabled) {
       print_inst(pc); /* マシンを表示 */
     }
@@ -507,10 +524,13 @@ void whilecode()
   d = pop();
   while (d.val){
     execute(*((Inst **)(savepc))); /* body */
+    if (returning) break;
     execute(savepc+2);
     d = pop();
   }
-  pc = *((Inst **)(savepc+1)); /* next statement */
+  if (!returning) {
+    pc = *((Inst **)(savepc+1)); /* next statement */
+  }
 }
 
 void breakcode(){
@@ -571,7 +591,9 @@ void ifcode()
   else if (*((Inst **)(savepc+1))) { /* else part? */
     execute(*((Inst **)(savepc+1))); /* else部分を実行 */
   }
-  pc = *((Inst **)(savepc+2)); /* next stmt */
+  if (!returning){
+    pc = *((Inst **)(savepc+2)); /* next stmt */
+  }
 }
 
 void andcode()
@@ -638,3 +660,107 @@ void push1()
   push(d);
 }
 
+void define(Symbol *sp) /* put func/proc in symbol table */
+{
+  sp->u.defn = (Inst)progbase; /* start of code */
+  progbase = progp; /* next code starts here */
+}
+
+void call() /* call a function */
+{
+  Symbol *sp = (Symbol *)pc[0]; /* symbol table entry */
+  /* for function */
+  if (fp++ >= &frame[NFRAME-1]) {
+    execerror(sp->name, "call nested too deeply");
+  }
+  fp->sp = sp;
+  fp->nargs = (int)pc[1];
+  fp->retpc = pc +2;
+  fp->argn = stackp -1; /* last argument */
+  execute(sp->u.defn);
+  returning = 0;
+}
+
+void funcret() /* return from a function */
+{
+  Datum d;
+  if (fp->sp->type == PROCEDURE)
+    execerror(fp->sp->name, "(proc) returns value");
+  d = pop(); /* preserve function return value */
+  ret();
+  push(d);
+}
+
+void procret() /* return from a procedure */
+{
+  if(fp->sp->type == FUNCTION)
+    execerror(fp->sp->name, "(func) returns no value");
+  ret();
+}
+
+void ret() /* common return from a func or proc */
+{
+  int i;
+  for (i=0; i<fp->nargs; i++)
+    pop(); /* pop arguments */
+  pc = (Inst *)fp->retpc;
+  --fp;
+  returning = 1;
+}
+
+double *getarg() /* return pointer to argument */
+{
+  int nargs = (int) *pc++;
+  if (nargs > fp->nargs) execerror(fp->sp->name, "not enough arguments");
+  return &fp->argn[nargs = fp->nargs].val;
+}
+
+void arg() /*push argument onto stack */
+{
+  Datum d;
+  d.val = *getarg();
+  push(d);
+}
+
+void argassign() /* store top of stack argument */
+{
+  Datum d;
+  d = pop();
+  push(d); /* leave value on stack */
+  *getarg() = d.val;
+}
+
+void prstr() /* print string value */
+{
+  printf("%s", (char *) *pc++);
+}
+
+void preexpr() /* print numeric value */
+{
+  Datum d;
+  d = pop();
+  printf("%.8g ", d.val);
+}
+
+void varread() /* read into variable */
+{
+  Datum d;
+  extern FILE *fin;
+  Symbol *var = (Symbol *) *pc++;
+Again:
+  switch(fscanf(fin, "%1f", &var->u.val)) {
+    case EOF:
+      if (moreinput())
+        goto Again;
+      d.val = var->u.val = 0.0;
+      break;
+    case 0:
+      execerror("non-number read into" , var->name);
+      break;
+    default:
+      d.val = 1.0;
+      break;
+  }
+  var->type = VAR;
+  push(d);
+}
