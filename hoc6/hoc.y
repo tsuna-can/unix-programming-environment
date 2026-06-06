@@ -344,11 +344,11 @@ void run ()
   }
 }
 
+int c;
+
 int yylex(void)
 {
-  int c;
-
-  while ((c = getchar()) == ' ' || c == '\t') {
+  while ((c = getc(fin)) == ' ' || c == '\t') {
     /* 空白とタブをスキップ（何もしない） */
   }
   if (c == EOF) {
@@ -356,8 +356,8 @@ int yylex(void)
   }
   if (c == '.' || isdigit(c)) { /* number */
     double d;
-    ungetc(c, stdin);
-    scanf("%lf", &d);
+    ungetc(c, fin);
+    fscanf(fin, "%lf", &d);
     yylval.sym = install("", NUMBER, d);
     return NUMBER;
   }
@@ -365,9 +365,13 @@ int yylex(void)
     Symbol *s;
     char sbuf[100], *p = sbuf;
     do {
+      if (p >= sbuf + sizeof(sbuf) -1) {
+        *p = '\0';
+        execerror("name too long" , sbuf);
+      }
       *p++ = c;
-    } while ((c=getchar()) != EOF && isalnum(c));
-    ungetc(c, stdin);
+    } while ((c=getc(fin)) != EOF && isalnum(c));
+    ungetc(c, fin);
     *p = '\0';
     if ((s=lookup(sbuf)) == 0) {
       s = install(sbuf, UNDEF, 0.0);
@@ -430,11 +434,11 @@ int yylex(void)
 
 int follow(int expect, int ifyes, int ifno) /* look after for >=, etc... */
 {
-  int c = getchar();
+  int c = getc(fin);
   if (c == expect){
     return ifyes;
   }
-  ungetc(c, stdin);
+  ungetc(c, fin);
   return ifno;
 }
 
