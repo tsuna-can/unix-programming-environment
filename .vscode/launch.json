@@ -2,6 +2,26 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Debug hoc6",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/hoc6/hoc6",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/hoc6",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "lldb",
+      "preLaunchTask": "build hoc6 (debug)",
+      "setupCommands": [
+        {
+          "description": "Set stdin from file",
+          "text": "settings set target.input-path test.txt",
+          "ignoreFailures": false
+        }
+      ]
+    },
+    {
       "name": "Debug hoc5",
       "type": "cppdbg",
       "request": "launch",

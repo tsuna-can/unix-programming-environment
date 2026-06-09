@@ -684,8 +684,9 @@ void call() /* call a function */
 void funcret() /* return from a function */
 {
   Datum d;
-  if (fp->sp->type == PROCEDURE)
+  if (fp->sp->type == PROCEDURE) {
     execerror(fp->sp->name, "(proc) returns value");
+  }
   d = pop(); /* preserve function return value */
   ret();
   push(d);
@@ -693,16 +694,18 @@ void funcret() /* return from a function */
 
 void procret() /* return from a procedure */
 {
-  if(fp->sp->type == FUNCTION)
+  if(fp->sp->type == FUNCTION) {
     execerror(fp->sp->name, "(func) returns no value");
+  }
   ret();
 }
 
 void ret() /* common return from a func or proc */
 {
   int i;
-  for (i=0; i<fp->nargs; i++)
+  for (i=0; i< fp->nargs; i++) {
     pop(); /* pop arguments */
+  }
   pc = (Inst *)fp->retpc;
   --fp;
   returning = 1;
@@ -711,7 +714,9 @@ void ret() /* common return from a func or proc */
 double *getarg() /* return pointer to argument */
 {
   int nargs = (int) *pc++;
-  if (nargs > fp->nargs) execerror(fp->sp->name, "not enough arguments");
+  if (nargs > fp->nargs) {
+    execerror(fp->sp->name, "not enough arguments");
+  }
   return &fp->argn[nargs - fp->nargs].val;
 }
 

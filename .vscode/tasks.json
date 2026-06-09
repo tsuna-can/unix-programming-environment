@@ -2,6 +2,19 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "build hoc6 (debug)",
+      "type": "shell",
+      "command": "make hoc6",
+      "options": {
+        "cwd": "${workspaceFolder}/hoc6"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
       "label": "build hoc5 (debug)",
       "type": "shell",
       "command": "make hoc5",

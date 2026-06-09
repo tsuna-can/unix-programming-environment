@@ -23,7 +23,7 @@ typedef union Datum { /* interpreter stack type */
 extern Datum pop();
 
 extern Inst prog[];
-extern Inst *progp;
+extern Inst *progp, *progbase;
 extern Inst *code(Inst f); /* 関数ポインタを引き数に取り、関数ポインタへのポインタを返す */
 extern void eval(void), add(void), sub(void), mul(void), divide(void), negate(void), power(void);
 extern void assign(void), bltin(void), varpush(void), constpush(void), print(void), popstack(void);

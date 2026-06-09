@@ -261,17 +261,12 @@ prlist: expr { code(prexpr); }
       code2(prstr, (Inst)$3);
     }
     ;
-defn: FUNC procname {
-    $2->type=FUNCTION;
-    indef=1;
-    }
-    '(' ')' stmt {
+defn: FUNC procname { $2->type=FUNCTION; indef=1; } '(' ')' stmt {
       code(procret);
       define($2);
       indef=0;
     }
-    | PROC procname {$2->type=PROCEDURE; indef=1;}
-     '(' ')' stmt {
+    | PROC procname { $2->type=PROCEDURE; indef=1; } '(' ')' stmt {
       code(procret);
       define($2);
       indef=0;
@@ -299,7 +294,7 @@ jmp_buf begin;
 int main(int argc, char *argv[])
 {
   progname = argv[0];
-  if (argc == 1) {
+  if (argc == 1) { /* fake an argument list */
     static char *stdinonly[] = { "-" };
     gargv = stdinonly;
     gargc = 1;
@@ -340,7 +335,7 @@ void run ()
   signal(SIGFPE, fpecatch);
   for (initcode(); yyparse(); initcode()) {
     dump_code();
-    execute(prog);
+    execute(progbase);
   }
 }
 
