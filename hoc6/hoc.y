@@ -276,9 +276,9 @@ procname: VAR
     | FUNCTION
     | PROCEDURE
     ;
-arglist: /* nothing */ { $$=0; }
-    | expr { $$=1; }
-    | arglist ',' expr { $$=$1 + 1; }
+arglist: /* nothing */ { $$ = 0; }
+    | expr { $$ = 1; }
+    | arglist ',' expr { $$ = $1 + 1; }
     ;
 %%
 
@@ -291,6 +291,7 @@ arglist: /* nothing */ { $$=0; }
 char *progname;
 int lineno = 1;
 jmp_buf begin;
+
 int main(int argc, char *argv[])
 {
   progname = argv[0];
@@ -466,7 +467,7 @@ void defnonly(char *s) /* warn if illegal definition */
 {
   if (!indef){
     execerror(s, "used outside definition");
-    }
+  }
 }
 
 int backslash(int c) /* get next char with \'s interpreted */ 
