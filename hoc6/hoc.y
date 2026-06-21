@@ -39,10 +39,11 @@ void run(void);
 %token <sym> NUMBER PRINT VAR BLTIN UNDEF WHILE IF ELSE FOR BREAK CONTINUE STRING /* 終端記号 */
 %token <sym> FUNCTION PROCEDURE RETURN FUNC PROC READ
 %token <narg> ARG
-%type <inst> stmt asgn expr prlist stmtlist cond while if begin end and or for forcond optional break continue /* 非終端記号 */
+%type <inst> stmt asgn expr prlist stmtlist cond while if begin end and or for forcond optional break continue ternary /* 非終端記号 */
 %type <sym> procname
 %type <narg> arglist
 %right '=' ADDEQ SUBEQ MULEQ DIVEQ INCREMENT DECREMENT
+%right '?' ':'
 %left AND OR
 %left GT GE LT LE EQ NE
 %left '+' '-'
@@ -178,6 +179,11 @@ or: OR {
       code2(STOP, STOP);
     }
     ;
+ternary: '?'  {
+       $$ = code(ternarycode);
+       code3(STOP, STOP, STOP);
+    }
+    ;
 break: BREAK {
       $$ = code(breakcode);
     }
@@ -240,6 +246,11 @@ expr: NUMBER {
     | expr or expr end {
       ($2)[1] = (Inst) $3; /* 右辺部分 */
       ($2)[2] = (Inst) progp; /* 次の命令 */
+    }
+    | expr ternary expr end ':' expr end {
+      ($2)[1] = (Inst) $3; /* then部分 */
+      ($2)[2] = (Inst) $6; /* else命令 */
+      ($2)[3] = (Inst) progp; /* 次の命令 */
     }
     | NOT expr {
       $$ = $2;

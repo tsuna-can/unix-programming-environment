@@ -646,6 +646,24 @@ void orcode()
   pc = *((Inst **)(savepc+1)); /* next stmt */
 }
 
+void ternarycode()
+{
+  /*
+  [n]   ternarycode命令
+  [n+1] thenへのポインタ
+  [n+2] elseへのポインタ
+   */
+  Datum d;
+  Inst *savepc = pc; /* executeでインクリメント済みなのでこれがthenを指している */
+  d = pop(); /* 条件の結果を取得 */
+  if (d.val) {
+    execute(*((Inst **)(savepc))); /* thenを実行 */
+  } else {
+    execute(*((Inst **)(savepc+1))); /* elseを実行 */
+  }
+  pc = *((Inst **)(savepc+2)); /* next stmt */
+}
+
 void prexpr() /* print numeric value */
 {
   Datum d;

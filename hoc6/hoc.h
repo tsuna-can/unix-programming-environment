@@ -32,7 +32,7 @@ extern void gt(void), lt(void), eq(void), ge(void), le(void), ne(void), and(void
 extern void breakcode(void), continuecode(void);
 extern void addeq(void), subeq(void), muleq(void), diveq(void);
 extern void pre_increment(void), post_increment(void), pre_decrement(void), post_decrement(void);
-extern void ifcode(void), whilecode(void), andcode(void), orcode(void), forcode(void);
+extern void ifcode(void), whilecode(void), andcode(void), orcode(void), forcode(void), ternarycode(void);
 extern void push1(void);
 
 extern void execerror(const char *s, const char *t);
